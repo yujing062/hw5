@@ -1,0 +1,125 @@
+1.
+i=imread('C:\Users\ywj5022\Desktop\5\test1.pgm');
+i_d=im2double(i);%图像转换为double型
+i_f=fft2(i_d);
+[x,y]=size(i);
+di=distmatrix(x,y);
+D0=100;n=3;
+h_b=1./(1+(di./D0).^(2*n));
+
+
+M,N]=size(g);  
+nn=2;           % Butterworth滤波器  
+d0=30;  
+m=floor(M/2); n=floor(N/2);  
+for i=1:M  
+       for j=1:N  
+           d=sqrt((i-m)^2+(j-n)^2);  
+           h=1/(1+0.414*(d/d0)^(2*nn));  % 计算低通滤波器传函数 
+           result(i,j)=h*g(i,j);  
+       end  
+end  
+ figure(2);  
+subplot(1,2,2);imshow(log(1+abs(result)),[]);  
+title('butterworth低通滤波 ');  
+result=ifftshift(result);  
+J2=ifft2(result);  
+J3=uint8(real(J2));  
+subplot(1,2,1),imshow(J3);                      % 显示滤波处理后的图像  
+
+s=0; s1=0;
+for i=1:M
+    for j=1:N
+        s=s+abs(g(i,j)^2);
+    end
+end                                    %计算功率谱比
+
+for i=1:M
+    for j=1:N
+        s1=s1+abs(result(i,j)^2);
+    end
+end
+l=s1/s
+
+subplot(2,2,1),imshow(i),title('原始图像');
+subplot(2,2,2),imshow(log(1+abs(fftshift(i_f))),[]),title('dft original image');
+subplot(2,2,3),mesh(fftshift(di)),title(' distance matrix');
+subplot(2,2,4),imshow(fftshift(h_b)),title(' butterworth low past');
+filt_f=h_b.*i_f;
+filt_i=real(ifft2(filt_f));
+figure,subplot(1,2,1),imshow(log(1+abs(fftshift(filt_f))),[]),title('filt dft original image');
+subplot(1,2,2),imshow(filt_i),title(' filt original image');
+
+
+2.
+i=imread('C:\Users\ywj5022\Desktop\5\test4.bmp');
+f=double(i);
+F=fft2(f);
+F=fftshift(F);
+[p,q]=size(F);
+n=2;
+D0=25;
+for u=1:p
+    for v=1:q
+      D(u,v)=sqrt((u-fix(p/2))^2+(v-fix(q/2))^2);
+      H(u,v)=1-exp(-D(u,v)^2/(2*D0^2));
+      G(u,v)=H(u,v)*F(u,v);
+    end
+end
+g=ifftshift(G);
+g=ifft2(g);
+g=uint8(real(g));
+figure(1);
+subplot(121)
+imshow(i);
+title('原始图像');
+subplot(122)
+imshow(g);
+
+
+3
+test = imread('C:\Users\ywj5022\Desktop\5\test3_corrupt.pgm');
+[U,V]=dftuv(P,Q);  % 得到距离中心的距离
+D = sqrt(U .^ 2 + V .^ 2);  
+% laplaceFilt = [0 1 0;1 -4 1;0 1 0];  %一阶拉普拉斯滤波器
+% laplaceFilt = [1 1 1;1 -8 1;1 1 1];  %二阶拉普拉斯滤波器
+% LAPLACEfft = fftshift(fft2(laplaceFilt,P,Q));
+% figure; mesh(abs(LAPLACEfft)); title("laplace fft");  
+LAPLACEbook = - 4 * pi * pi * D .^ 2;
+LAPLACEbook = fftshift(LAPLACEbook);
+figure; mesh(abs(LAPLACEbook)); title("laplace filter");
+
+D0 = 0.05 * P;
+k = 1;  
+UNMASK = k * (1 - exp(- D .^ 2 ./ (2 * D0 ^ 2)));  % 边缘检测模板
+UNMASK = fftshift(UNMASK);
+figure; mesh(abs(UNMASK)); title("unmask, D0 = 0.05 * P, k = 1");
+
+function [U,V] = dftuv( M,N )
+%DFTUV computes meshgrid frequency matrices
+%set up range of variables
+u=0:(M-1);
+v=0:(N-1);
+%compute the indices for use in meshgrid
+idx=find(u > M/2);
+u(idx)=u(idx)-M;
+idy=find(v > N/2);
+v(idy)=v(idy)-N;
+%compute the meshgrid arrays
+[V,U]=meshgrid(v,u);
+end
+
+TESTLaplace = TEST .* LAPLACEbook;
+TESTLaplace = ifftshift(TESTLaplace);  % 把图像的频谱移回原点
+testLaplace = real(ifft2(TESTLaplace));  % 处理后频域 ->空域
+testLaplace = testLaplace(1:M,1:N);  
+
+TESTUnmask = TEST .* UNMASK;
+TESTUnmask = ifftshift(TESTUnmask);
+testUnmask = real(ifft2(TESTUnmask));  % 处理后频域 ->空域
+testUnmask = testUnmask(1:M,1:N);  
+
+figure; 
+subplot(2,2,1); imshow(test); title("original image");
+subplot(2,2,2); imshow(testUnmask,[ ]); title("unmask");
+subplot(2,2,3); imshow(testLaplace,[ ]); title("laplace");
